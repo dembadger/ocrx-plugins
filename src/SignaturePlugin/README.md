@@ -31,35 +31,38 @@ A few things worth knowing:
 
 ## Settings
 
-Two settings, both about the overlay. Change them from the plugin's settings in the engine. The change applies at once
-while the plugin is running; otherwise it is kept and applied the next time the plugin starts.
+Four settings are available in the engine's plugin settings. Changes apply immediately
+while the plugin is running and persist to its config file.
 
-| Setting | Choices (as shown in the UI) | Default |
+| Setting | Choices / range | Default |
 | --- | --- | --- |
 | **Theme** | Default, Star Citizen, Retro | Default |
 | **Position** | Top Left, Top Center, Top Right, Middle Left, Center, Middle Right, Bottom Left, Bottom Center, Bottom Right | Top Center |
+| **Counter crop width** | 70–400 reference pixels | 170 |
+| **Counter horizontal offset** | −300 to +300 reference pixels | 0 |
 
-**Theme** is the look of the overlay pill. Default is a plain dark pill whose colours and size can
-be tuned by hand; Star Citizen is a compact navy pill with a cyan outline; Retro is a square-cornered
-purple pill with pixel text.
-
-**Position** is where the overlay is anchored on your primary screen. It is independent of the
-theme: changing one never changes the other.
+**Theme** selects the overlay pill's look. **Position** anchors it on the primary screen.
+**Counter crop width** widens or narrows the signature OCR region around its original centre.
+**Counter horizontal offset** shifts that centre; positive values move it right. The ROI remains
+subject to the plugin's automatic Star Citizen FOV adjustment.
 
 ### Editing by hand
 
-Both settings live in `%LOCALAPPDATA%\OCRX\SignaturePlugin\config.json` as `overlayTheme` and
-`position`, if you prefer a file to the UI (restart the plugin after editing it). The file takes
-lowercase ids: `default`, `citizen` or `retro`, and `topleft`, `topcenter`, `topright`,
-`middleleft`, `center`, `middleright`, `bottomleft`, `bottomcenter` or `bottomright`:
+The values are saved in `%LOCALAPPDATA%\\OCRX\\SignaturePlugin\\config.json` as
+`overlayTheme`, `position`, `counterRoiWidth`, and `counterRoiHorizontalOffset`. If editing the
+file directly, restart the plugin to apply the changes. Theme and position use lowercase ids; for
+example:
 
 ```json
 "overlayTheme": "citizen",
-"position": "topright"
+"position": "topright",
+"counterRoiWidth": 170,
+"counterRoiHorizontalOffset": 0
 ```
 
 The same file holds the `outputs` list. By default every change of reading (and every clear) is appended to
-`captures/signatures.jsonl` next to the config, one JSON line each, for use in your own tools. Set `outputs` to `[]` to switch off both the file and the overlay.
+`captures/signatures.jsonl` next to the config, one JSON line each, for use in your own tools. Set
+`outputs` to `[]` to switch off both the file and the overlay.
 
 ## Troubleshooting
 
