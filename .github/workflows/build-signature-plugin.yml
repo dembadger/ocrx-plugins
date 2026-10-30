@@ -1,0 +1,35 @@
+name: Build custom SignaturePlugin
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Publish Windows plugin
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish
+        run: dotnet publish .\src\SignaturePlugin\SignaturePlugin.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o .\publish\SignaturePlugin
+
+      - name: Package
+        shell: pwsh
+        run: Compress-Archive -Path .\publish\SignaturePlugin\* -DestinationPath .\SignaturePlugin-win-x64.zip -Force
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: SignaturePlugin-win-x64
+          path: .\SignaturePlugin-win-x64.zip
+          if-no-files-found: error
+          retention-days: 14
