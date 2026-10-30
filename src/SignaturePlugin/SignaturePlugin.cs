@@ -44,7 +44,7 @@ public sealed class SignaturePlugin : IOcrxPlugin
     private const int ReconnectClearAttempt = 4;
 
     /// <summary>
-    /// The opaque ids SignaturePlugin gives its projected settings — the overlay theme and position.
+    /// The opaque ids SignaturePlugin gives its projected settings — overlay appearance and ROI calibration.
     /// The engine forwards each back untouched on a user edit and never learns what either means,
     /// which is exactly why they can live entirely inside this plugin with no engine-side manifest or
     /// version gate.
@@ -185,8 +185,8 @@ public sealed class SignaturePlugin : IOcrxPlugin
     }
 
     /// <summary>
-    /// Projects the overlay-theme setting the moment a Track session opens, so the engine's panel has
-    /// the current value before the first tick. A plugin built without a config (unit tests) has no
+    /// Projects the current settings the moment a Track session opens, so the engine's panel has
+    /// the current values before the first tick. A plugin built without a config (unit tests) has no
     /// setting to project and stays silent. Then reads Star Citizen's FOV, so the counter rect is
     /// zoomed right before the first tick of a live session.
     /// </summary>
@@ -200,11 +200,9 @@ public sealed class SignaturePlugin : IOcrxPlugin
     }
 
     /// <summary>
-    /// Applies a user's theme and/or position edit entirely inside this process: validate each value
-    /// against its own owner (<see cref="OverlayThemes"/>/<see cref="OverlayPositions"/>), rebuild the
-    /// live overlay from a clean base, republish the effective spec, and only then persist — so a
-    /// failed rebuild leaves neither the running overlay nor config.json ahead of the other. The
-    /// engine is never asked to validate anything.
+    /// Applies overlay and counter-ROI edits entirely inside this process: validate each value,
+    /// rebuild the live overlay only when its appearance changed, update the subscribed ROI when its
+    /// calibration changed, republish the effective spec, and persist the accepted values.
     /// </summary>
     public async Task OnApplySettings(ApplySettings apply, IPluginServices services, CancellationToken ct)
     {
@@ -333,6 +331,7 @@ public sealed class SignaturePlugin : IOcrxPlugin
                     .ToString(CultureInfo.InvariantCulture),
                 Min: Rois.MinCounterWidth,
                 Max: Rois.MaxCounterWidth,
+                Help: "Width in OCRX reference pixels; expands equally around the original crop centre.",
                 Group: "Calibration"),
             new SettingsField(
                 Id: CounterRoiHorizontalOffsetSettingId,
@@ -345,6 +344,7 @@ public sealed class SignaturePlugin : IOcrxPlugin
                     .ToString(CultureInfo.InvariantCulture),
                 Min: Rois.MinCounterHorizontalOffset,
                 Max: Rois.MaxCounterHorizontalOffset,
+                Help: "Shift in OCRX reference pixels; positive values move the crop right.",
                 Group: "Calibration"),
         ]);
 
