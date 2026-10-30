@@ -1,6 +1,11 @@
 name: Build custom SignaturePlugin
 
 on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/SignaturePlugin/**'
+      - '.github/workflows/build-signature-plugin.yml'
   workflow_dispatch:
 
 permissions:
