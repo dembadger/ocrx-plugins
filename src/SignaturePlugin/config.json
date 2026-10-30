@@ -4,6 +4,8 @@
   "saveDebugFrames": false,
   "overlayTheme": "default",
   "position": "topcenter",
+  "counterRoiWidth": 170,
+  "counterRoiHorizontalOffset": 0,
   "outputs": [
     {
       "type": "json",
