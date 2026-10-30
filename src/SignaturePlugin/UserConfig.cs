@@ -6,6 +6,8 @@ internal sealed class SignaturePluginConfig : PluginConfig
 {
     public string OverlayTheme { get; set; } = OverlayThemes.Default;
     public string Position { get; set; } = OverlayPositions.TopCenter;
+    public int CounterRoiWidth { get; set; } = Rois.DefaultCounterWidth;
+    public int CounterRoiHorizontalOffset { get; set; } = 0;
 }
 
 internal static class UserConfig
