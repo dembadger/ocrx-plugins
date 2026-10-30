@@ -241,25 +241,25 @@ public sealed class SignaturePlugin : IOcrxPlugin
             position = OverlayPositions.Normalize(positionEdit.Value);
         }
 
-        var roiWidth = Math.Clamp(_config.CounterRoiWidth, Rois.MinCounterWidth, Rois.MaxCounterWidth);
+        var roiWidth = Math.Clamp(_config.CounterRoiWidth, SignaturePluginRois.MinCounterWidth, SignaturePluginRois.MaxCounterWidth);
         if (widthEdit is not null
             && (!int.TryParse(widthEdit.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out roiWidth)
-                || roiWidth < Rois.MinCounterWidth || roiWidth > Rois.MaxCounterWidth))
+                || roiWidth < SignaturePluginRois.MinCounterWidth || roiWidth > SignaturePluginRois.MaxCounterWidth))
         {
-            services.Log($"SignaturePlugin: counter crop width must be {Rois.MinCounterWidth} to {Rois.MaxCounterWidth} reference pixels.");
+            services.Log($"SignaturePlugin: counter crop width must be {SignaturePluginRois.MinCounterWidth} to {SignaturePluginRois.MaxCounterWidth} reference pixels.");
             return;
         }
 
         var roiHorizontalOffset = Math.Clamp(
             _config.CounterRoiHorizontalOffset,
-            Rois.MinCounterHorizontalOffset,
-            Rois.MaxCounterHorizontalOffset);
+            SignaturePluginRois.MinCounterHorizontalOffset,
+            SignaturePluginRois.MaxCounterHorizontalOffset);
         if (offsetEdit is not null
             && (!int.TryParse(offsetEdit.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out roiHorizontalOffset)
-                || roiHorizontalOffset < Rois.MinCounterHorizontalOffset
-                || roiHorizontalOffset > Rois.MaxCounterHorizontalOffset))
+                || roiHorizontalOffset < SignaturePluginRois.MinCounterHorizontalOffset
+                || roiHorizontalOffset > SignaturePluginRois.MaxCounterHorizontalOffset))
         {
-            services.Log($"SignaturePlugin: counter horizontal offset must be {Rois.MinCounterHorizontalOffset} to {Rois.MaxCounterHorizontalOffset} reference pixels.");
+            services.Log($"SignaturePlugin: counter horizontal offset must be {SignaturePluginRois.MinCounterHorizontalOffset} to {SignaturePluginRois.MaxCounterHorizontalOffset} reference pixels.");
             return;
         }
 
@@ -327,10 +327,10 @@ public sealed class SignaturePlugin : IOcrxPlugin
                 Id: CounterRoiWidthSettingId,
                 Label: "Counter crop width",
                 Type: SettingsFieldType.Int,
-                Value: Math.Clamp(config.CounterRoiWidth, Rois.MinCounterWidth, Rois.MaxCounterWidth)
+                Value: Math.Clamp(config.CounterRoiWidth, SignaturePluginRois.MinCounterWidth, SignaturePluginRois.MaxCounterWidth)
                     .ToString(CultureInfo.InvariantCulture),
-                Min: Rois.MinCounterWidth,
-                Max: Rois.MaxCounterWidth,
+                Min: SignaturePluginRois.MinCounterWidth,
+                Max: SignaturePluginRois.MaxCounterWidth,
                 Help: "Width in OCRX reference pixels; expands equally around the original crop centre.",
                 Group: "Calibration"),
             new SettingsField(
@@ -339,11 +339,11 @@ public sealed class SignaturePlugin : IOcrxPlugin
                 Type: SettingsFieldType.Int,
                 Value: Math.Clamp(
                         config.CounterRoiHorizontalOffset,
-                        Rois.MinCounterHorizontalOffset,
-                        Rois.MaxCounterHorizontalOffset)
+                        SignaturePluginRois.MinCounterHorizontalOffset,
+                        SignaturePluginRois.MaxCounterHorizontalOffset)
                     .ToString(CultureInfo.InvariantCulture),
-                Min: Rois.MinCounterHorizontalOffset,
-                Max: Rois.MaxCounterHorizontalOffset,
+                Min: SignaturePluginRois.MinCounterHorizontalOffset,
+                Max: SignaturePluginRois.MaxCounterHorizontalOffset,
                 Help: "Shift in OCRX reference pixels; positive values move the crop right.",
                 Group: "Calibration"),
         ]);
