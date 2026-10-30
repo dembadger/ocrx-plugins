@@ -44,6 +44,29 @@ public static class Rois
     public static readonly RoiSubscription Counter =
         new("counter", new RoiRect(1264, 454, 70, 44), 6.0, RoiKind.Text);
 
+    /// <summary>Default horizontal crop width for a moving signature badge.</summary>
+    public const int DefaultCounterWidth = 170;
+
+    public const int MinCounterWidth = 70;
+    public const int MaxCounterWidth = 400;
+    public const int MinCounterHorizontalOffset = -300;
+    public const int MaxCounterHorizontalOffset = 300;
+
+    /// <summary>
+    /// Builds the calibrated counter crop. Width expands around the original crop centre; offset
+    /// then shifts that centre in reference-space pixels. The engine maps the result to the live frame.
+    /// </summary>
+    public static RoiSubscription CalibratedCounter(int width, int horizontalOffset)
+    {
+        width = Math.Clamp(width, MinCounterWidth, MaxCounterWidth);
+        horizontalOffset = Math.Clamp(
+            horizontalOffset, MinCounterHorizontalOffset, MaxCounterHorizontalOffset);
+
+        var x = (int)Counter.Rect.X + horizontalOffset - (width - (int)Counter.Rect.Width) / 2;
+        var rect = new RoiRect((uint)x, Counter.Rect.Y, (uint)width, Counter.Rect.Height);
+        return Counter with { Rect = rect };
+    }
+
     /// <summary>A field, not <c>=> [Counter]</c>: the set never changes, and an
     /// expression-bodied property would build a fresh array on every read.</summary>
     public static readonly IReadOnlyList<RoiSubscription> All = [Counter];
