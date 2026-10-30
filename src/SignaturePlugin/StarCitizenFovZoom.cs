@@ -39,7 +39,7 @@ internal static class StarCitizenFovZoom
     /// maximum dimension, so this only keeps a nonsense FOV from asking for an absurd upscale.</summary>
     public const double MaxOcrScale = 12.0;
 
-    private const double CentreX = 1720;
+    private const double CentreX = 1280;
     private const double CentreY = 720;
 
     private static readonly double FloorTan = Math.Tan(FloorDegrees / 2 * Math.PI / 180);

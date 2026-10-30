@@ -4,7 +4,7 @@ using Ocrx.Sdk;
 namespace SignaturePlugin;
 
 /// <summary>
-/// The regions this plugin subscribes, in reference space (3440x1440), as calibrated. The live set
+/// The regions this plugin subscribes, in reference space (2560x1440), as calibrated. The live set
 /// is these rects zoomed for Star Citizen's current FOV (<see cref="StarCitizenFovZoom"/>), which
 /// <see cref="SignaturePlugin.Rois"/> serves and pushes to the engine whenever the FOV changes.
 /// </summary>
@@ -42,7 +42,7 @@ public static class Rois
     /// <remarks>Calibrated at a vertical FOV at or below <see cref="StarCitizenFovZoom.FloorDegrees"/>,
     /// where the badge does not move; wider FOVs zoom it toward screen centre.</remarks>
     public static readonly RoiSubscription Counter =
-        new("counter", new RoiRect(1704, 454, 70, 44), 6.0, RoiKind.Text);
+        new("counter", new RoiRect(1264, 454, 70, 44), 6.0, RoiKind.Text);
 
     /// <summary>Default horizontal crop width for a moving signature badge.</summary>
     public const int DefaultCounterWidth = 170;
