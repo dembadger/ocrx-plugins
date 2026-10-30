@@ -29,6 +29,24 @@
         { "value": "bottomright", "label": "Bottom Right" }
       ],
       "group": "Overlay"
+    },
+    {
+      "id": "counterRoiWidth",
+      "label": "Counter crop width",
+      "type": 2,
+      "value": "170",
+      "min": 70,
+      "max": 400,
+      "group": "Calibration"
+    },
+    {
+      "id": "counterRoiHorizontalOffset",
+      "label": "Counter horizontal offset",
+      "type": 2,
+      "value": "0",
+      "min": -300,
+      "max": 300,
+      "group": "Calibration"
     }
   ]
 }
