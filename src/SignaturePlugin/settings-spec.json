@@ -37,6 +37,7 @@
       "value": "170",
       "min": 70,
       "max": 400,
+      "help": "Width in OCRX reference pixels; expands equally around the original crop centre.",
       "group": "Calibration"
     },
     {
@@ -46,6 +47,7 @@
       "value": "0",
       "min": -300,
       "max": 300,
+      "help": "Shift in OCRX reference pixels; positive values move the crop right.",
       "group": "Calibration"
     }
   ]
