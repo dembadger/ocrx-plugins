@@ -51,6 +51,8 @@ public sealed class SignaturePlugin : IOcrxPlugin
     /// </summary>
     private const string OverlayThemeSettingId = "overlayTheme";
     private const string PositionSettingId = "position";
+    private const string CounterRoiWidthSettingId = "counterRoiWidth";
+    private const string CounterRoiHorizontalOffsetSettingId = "counterRoiHorizontalOffset";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly SignatureTable _table;
@@ -79,6 +81,7 @@ public sealed class SignaturePlugin : IOcrxPlugin
     {
         _table = table ?? SignatureTable.LoadEmbedded();
         _config = config ?? throw new ArgumentNullException(nameof(config));
+        _rois = [SignaturePluginRois.CalibratedCounter(config.CounterRoiWidth, config.CounterRoiHorizontalOffset)];
         _configPath = !string.IsNullOrWhiteSpace(configPath)
             ? configPath
             : throw new ArgumentException("Config path is required.", nameof(configPath));
@@ -146,6 +149,11 @@ public sealed class SignaturePlugin : IOcrxPlugin
             }
         }
 
+        await PushPendingRoisAsync(services, ct);
+    }
+
+    private async Task PushPendingRoisAsync(IPluginServices services, CancellationToken ct)
+    {
         var pending = Rois;
         if (ReferenceEquals(pending, _pushedRois))
             return;
@@ -166,8 +174,15 @@ public sealed class SignaturePlugin : IOcrxPlugin
         }
     }
 
-    private static RoiSubscription ZoomedCounter(double? verticalFov)
-        => StarCitizenFovZoom.Apply(SignaturePluginRois.Counter, StarCitizenFovZoom.Factor(verticalFov));
+    private RoiSubscription ZoomedCounter(double? verticalFov, SignaturePluginConfig? config = null)
+    {
+        var source = config ?? _config;
+        var counter = source is null
+            ? SignaturePluginRois.Counter
+            : SignaturePluginRois.CalibratedCounter(
+                source.CounterRoiWidth, source.CounterRoiHorizontalOffset);
+        return StarCitizenFovZoom.Apply(counter, StarCitizenFovZoom.Factor(verticalFov));
+    }
 
     /// <summary>
     /// Projects the overlay-theme setting the moment a Track session opens, so the engine's panel has
@@ -199,16 +214,13 @@ public sealed class SignaturePlugin : IOcrxPlugin
             string.Equals(value.Id, OverlayThemeSettingId, StringComparison.Ordinal));
         var positionEdit = apply.Values.FirstOrDefault(value =>
             string.Equals(value.Id, PositionSettingId, StringComparison.Ordinal));
-        if (themeEdit is null && positionEdit is null)
-            // Neither id is one this plugin owns — the engine forwarded an edit that is not ours.
-            // Nothing to do; never happens in practice but a no-op is the correct answer.
+        var widthEdit = apply.Values.FirstOrDefault(value =>
+            string.Equals(value.Id, CounterRoiWidthSettingId, StringComparison.Ordinal));
+        var offsetEdit = apply.Values.FirstOrDefault(value =>
+            string.Equals(value.Id, CounterRoiHorizontalOffsetSettingId, StringComparison.Ordinal));
+        if (themeEdit is null && positionEdit is null && widthEdit is null && offsetEdit is null)
             return;
 
-        // A blank value is a malformed edit, not a pick from the SELECT: reject it rather than let
-        // Normalize silently read it as an intentional reset to the default. Every real choice the
-        // engine forwards is one of the option strings this plugin declared. A rejected edit aborts
-        // the whole apply rather than falling back to the other field alone — the id is ours but the
-        // value is the user's, and the plugin, not the engine, is what rejected it.
         var theme = OverlayThemes.Normalize(_config.OverlayTheme);
         if (themeEdit is not null)
         {
@@ -231,57 +243,72 @@ public sealed class SignaturePlugin : IOcrxPlugin
             position = OverlayPositions.Normalize(positionEdit.Value);
         }
 
+        var roiWidth = Math.Clamp(_config.CounterRoiWidth, Rois.MinCounterWidth, Rois.MaxCounterWidth);
+        if (widthEdit is not null
+            && (!int.TryParse(widthEdit.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out roiWidth)
+                || roiWidth < Rois.MinCounterWidth || roiWidth > Rois.MaxCounterWidth))
+        {
+            services.Log($"SignaturePlugin: counter crop width must be {Rois.MinCounterWidth} to {Rois.MaxCounterWidth} reference pixels.");
+            return;
+        }
+
+        var roiHorizontalOffset = Math.Clamp(
+            _config.CounterRoiHorizontalOffset,
+            Rois.MinCounterHorizontalOffset,
+            Rois.MaxCounterHorizontalOffset);
+        if (offsetEdit is not null
+            && (!int.TryParse(offsetEdit.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out roiHorizontalOffset)
+                || roiHorizontalOffset < Rois.MinCounterHorizontalOffset
+                || roiHorizontalOffset > Rois.MaxCounterHorizontalOffset))
+        {
+            services.Log($"SignaturePlugin: counter horizontal offset must be {Rois.MinCounterHorizontalOffset} to {Rois.MaxCounterHorizontalOffset} reference pixels.");
+            return;
+        }
+
         var themeChanged = !string.Equals(theme, OverlayThemes.Normalize(_config.OverlayTheme), StringComparison.Ordinal);
         var positionChanged = !string.Equals(position, OverlayPositions.Normalize(_config.Position), StringComparison.Ordinal);
-        if (!themeChanged && !positionChanged)
+        var roiWidthChanged = roiWidth != _config.CounterRoiWidth;
+        var roiOffsetChanged = roiHorizontalOffset != _config.CounterRoiHorizontalOffset;
+        if (!themeChanged && !positionChanged && !roiWidthChanged && !roiOffsetChanged)
         {
-            // Nothing actually changed — a same-value re-apply. Republish so the panel reflects the
-            // current value, but do not rebuild — tearing down and re-drawing the overlay for a no-op
-            // change would flicker it.
             await services.PublishSettingsAsync(BuildSpec(_config), ct);
             return;
         }
 
-        // Apply both settings on a throwaway clone taken from the pristine base. _config's own Outputs
-        // stay the shipped default preset, so the next apply — including one that only touches the
-        // other field — always rebuilds from a clean overlay rather than from the last apply's mutated
-        // dimensions.
         var edited = _config.CloneForSettings<SignaturePluginConfig>(_configPath);
         edited.OverlayTheme = theme;
         edited.Position = position;
-        OverlayThemes.Apply(edited);
-        OverlayPositions.Apply(edited);
+        edited.CounterRoiWidth = roiWidth;
+        edited.CounterRoiHorizontalOffset = roiHorizontalOffset;
 
-        // Rebuild and republish against the edited clone *before* committing anything to _config, so a
-        // failure in either call leaves _config's in-memory values and the on-disk file agreeing on the
-        // previous ones rather than half-advanced. The one state this cannot hold is the live overlay:
-        // RebuildOutputsAsync swaps the running sinks first, so if PublishSettingsAsync then throws the
-        // overlay shows the new values while config and the panel still read the old ones. That heals
-        // on the next apply — _config is still the old values, so a change branch fires again — and
-        // undoing it would mean a rollback inside the host's rebuild, which is not worth it for a
-        // window this narrow.
-        await services.RebuildOutputsAsync(edited, ct);
-
-        // The rebuild just swapped in a fresh, not-yet-shown overlay window. Auto ticks only emit on a
-        // changed reading (see EmitObservation's dedupe against _lastObservation), so without this the
-        // new window would stay blank until the on-screen signature actually changed — the overlay
-        // would look like it vanished for as long as the same ore sat on screen. Clearing the cache
-        // forces the very next tick's reading through even if it is identical to the last one shown.
-        _lastObservation = null;
+        var overlayChanged = themeChanged || positionChanged;
+        if (overlayChanged)
+        {
+            OverlayThemes.Apply(edited);
+            OverlayPositions.Apply(edited);
+            await services.RebuildOutputsAsync(edited, ct);
+            // The new overlay sink needs the next tick to resend the current reading.
+            _lastObservation = null;
+        }
 
         await services.PublishSettingsAsync(BuildSpec(edited), ct);
 
         _config.OverlayTheme = theme;
         _config.Position = position;
+        _config.CounterRoiWidth = roiWidth;
+        _config.CounterRoiHorizontalOffset = roiHorizontalOffset;
         _config.Save(_configPath);
+
+        if (roiWidthChanged || roiOffsetChanged)
+        {
+            var counter = services.Engine.ReplayMode || _fov is null
+                ? SignaturePluginRois.CalibratedCounter(roiWidth, roiHorizontalOffset)
+                : ZoomedCounter(_fov.Current, edited);
+            Volatile.Write(ref _rois, [counter]);
+            await PushPendingRoisAsync(services, ct);
+        }
     }
 
-    /// <summary>
-    /// Builds the effective spec: two SELECT fields whose options come straight from
-    /// <see cref="OverlayThemes.Options"/>/<see cref="OverlayPositions.Options"/> so they cannot drift
-    /// from what can actually be applied, and whose values are the config's current theme and position
-    /// in canonical form.
-    /// </summary>
     private static SettingsSpec BuildSpec(SignaturePluginConfig config) =>
         new([
             new SettingsField(
@@ -298,6 +325,27 @@ public sealed class SignaturePlugin : IOcrxPlugin
                 Value: OverlayPositions.Normalize(config.Position),
                 Options: OverlayPositions.Options,
                 Group: "Overlay"),
+            new SettingsField(
+                Id: CounterRoiWidthSettingId,
+                Label: "Counter crop width",
+                Type: SettingsFieldType.Int,
+                Value: Math.Clamp(config.CounterRoiWidth, Rois.MinCounterWidth, Rois.MaxCounterWidth)
+                    .ToString(CultureInfo.InvariantCulture),
+                Min: Rois.MinCounterWidth,
+                Max: Rois.MaxCounterWidth,
+                Group: "Calibration"),
+            new SettingsField(
+                Id: CounterRoiHorizontalOffsetSettingId,
+                Label: "Counter horizontal offset",
+                Type: SettingsFieldType.Int,
+                Value: Math.Clamp(
+                        config.CounterRoiHorizontalOffset,
+                        Rois.MinCounterHorizontalOffset,
+                        Rois.MaxCounterHorizontalOffset)
+                    .ToString(CultureInfo.InvariantCulture),
+                Min: Rois.MinCounterHorizontalOffset,
+                Max: Rois.MaxCounterHorizontalOffset,
+                Group: "Calibration"),
         ]);
 
     public void OnSessionEvent(SessionEvent evt)
